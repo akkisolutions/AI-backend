@@ -1,5 +1,7 @@
+import datetime
 import json
 from album_creation import AlbumCreation
+from face_classification import FaceClassification
 from loguru import logger # type: ignore
 import asyncio
 from process_image import ProcessImage
@@ -78,6 +80,16 @@ async def process_messages():
         print("e", e)
         logger.exception(f"Exception at process_messages")
 
+async def handle_face_classification():
+    try:
+        mongodb_database = MongodbDatabase()
+        face_classification = FaceClassification(mongodb_database)
+        await face_classification.handle_request()
+    except Exception as e:
+        logger.exception(f"Exception at handle_face_classification")
+
 if __name__ == "__main__":
     setup_logger()
+
     asyncio.run(process_messages())
+    asyncio.run(handle_face_classification())
