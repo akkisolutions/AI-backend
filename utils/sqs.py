@@ -1,3 +1,4 @@
+import json
 from dotenv import load_dotenv # type: ignore
 import os
 import boto3
@@ -64,3 +65,19 @@ class SQS():
         except Exception as e:
             logger.critical(f"Exception at SQS delete_sqs_message", e)
             return ServerErrorResponse(f"Exception at SQS delete_sqs_message", e)
+
+    async def send_sqs_message(self, message_body: dict) -> AppResponse:
+        try:
+            logger.info("Sending message to SQS...")
+
+            response = self.client.send_message(
+                QueueUrl=SQS_QUEUE_URL,
+                MessageBody=json.dumps(message_body)
+            )
+
+            logger.info(f"Message sent successfully. MessageId: {response['MessageId']}")
+            return SuccessResponse("Message sent successfully", response)
+
+        except Exception as e:
+            logger.critical(f"Exception at SQS send_sqs_message: {e}", exc_info=True)
+            return ServerErrorResponse("Exception at SQS send_sqs_message", str(e))
