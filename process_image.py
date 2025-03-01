@@ -13,6 +13,8 @@ import face_recognition
 from bson import ObjectId
 import datetime
 
+video_extensions = (".mp4", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".webm")
+
 class ProcessImage():
 
     def __init__(self, models: Models, pinecone: PineconeDatabase, mongodb: MongodbDatabase):
@@ -46,11 +48,12 @@ class ProcessImage():
             experience_id = request.get("experience_id")
             uploader_id = request.get("uploader_id")
             img_id = request.get("img_id")
+            is_video = image_url.lower().endswith(video_extensions)
 
-            if not image_url or not experience_id or not uploader_id or not img_id:
+            if not image_url or not experience_id or not uploader_id or not img_id or is_video:
                 logger.exception("Not all required fields provided for processing image at ProcessImage handle_request", request)
                 return ErrorResponse("Not all required fields provided for processing image at ProcessImage handle_request", request)
-        
+
             response = requests.get(image_url)
             response.raise_for_status()
             
@@ -60,7 +63,11 @@ class ProcessImage():
 
             image_embedding = await self.extract_image_embedding_from_opencv(rgb)
 
-            self.pinecone.index.upsert([(img_id, image_embedding.tolist(), {"experience_id": experience_id, "img_id": img_id, "image_url": image_url})])
+            if not image_embedding.success:
+                logger.exception("Faield to generate image embeddings at ProcessImage handle_request", request)
+                return ErrorResponse("Faield to generate image embeddings at ProcessImage handle_request", request)
+
+            self.pinecone.index.upsert([(img_id, image_embedding.data.tolist(), {"experience_id": experience_id, "img_id": img_id, "image_url": image_url})])
 
             boxes = face_recognition.face_locations(rgb, model="cnn")
             encodings = face_recognition.face_encodings(rgb, boxes)
@@ -83,10 +90,13 @@ class ProcessImage():
 
             update_one_response = await self.mongodb.face_embeddings_collection.update_one({"_id": ObjectId(img_id)}, {"$set": update}, upsert=True)
 
-            if update_one_response.acknowledged and update_one_response.modified_count > 0:
-                return SuccessResponse("Image processed again sucessfully", None, 200)
+            if not update_one_response.acknowledged or not update_one_response.modified_count > 0:
+                return ErrorResponse("Faield to update image embeddings to mongodb", update_one_response)
+                
+            return SuccessResponse("Image processed again sucessfully", None)
         except Exception as e:
-            logger.critical(f"Exception at ProcessImage handle_request", e)
+
+            logger.exception(f"Exception at ProcessImage handle_request", exc_info=True)
             return ServerErrorResponse(f"Exception at ProcessImage handle_request", e)
         
     
