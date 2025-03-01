@@ -67,10 +67,15 @@ class ProcessImage():
                 logger.exception("Faield to generate image embeddings at ProcessImage handle_request", request)
                 return ErrorResponse("Faield to generate image embeddings at ProcessImage handle_request", request)
 
+            print("pincome startte =============================================")
             self.pinecone.index.upsert([(img_id, image_embedding.data.tolist(), {"experience_id": experience_id, "img_id": img_id, "image_url": image_url})])
+            print("pincome finished =============================================")
 
+            print("Staring boxes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
             boxes = face_recognition.face_locations(rgb, model="cnn")
+            print("Staring encodings >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
             encodings = face_recognition.face_encodings(rgb, boxes)
+            print("completed encodings >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
             update = {
                 "experience_id": ObjectId(experience_id),
@@ -88,9 +93,11 @@ class ProcessImage():
                 "created_at": datetime.datetime.now() 
             }
 
+            del boxes, encodings
+
             update_one_response = await self.mongodb.face_embeddings_collection.update_one({"_id": ObjectId(img_id)}, {"$set": update}, upsert=True)
 
-            if not update_one_response.acknowledged or not update_one_response.modified_count > 0:
+            if not update_one_response.acknowledged:
                 return ErrorResponse("Faield to update image embeddings to mongodb", update_one_response)
                 
             return SuccessResponse("Image processed again sucessfully", None)

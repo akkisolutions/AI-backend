@@ -1,5 +1,6 @@
 import datetime
 import json
+import signal
 from album_creation import AlbumCreation
 from face_classification import FaceClassification
 from loguru import logger # type: ignore
@@ -49,10 +50,10 @@ async def process_individual_message(message, sqs: SQS, process_image: ProcessIm
     except Exception as e:
         logger.exception(f"Exception at process_individual_message")
 
-async def process_messages():
+async def process_messages(models: Models):
     try:
         sqs = SQS()
-        models = Models()
+        # models = Models()
         pinecone_database = PineconeDatabase()
         mongodb_database = MongodbDatabase()
         groq_api = GroqApi()
@@ -88,8 +89,29 @@ async def handle_face_classification():
     except Exception as e:
         logger.exception(f"Exception at handle_face_classification")
 
-if __name__ == "__main__":
+async def main():
     setup_logger()
+    models = Models()
 
-    asyncio.run(process_messages())
-    asyncio.run(handle_face_classification())
+    loop = asyncio.get_running_loop()
+
+    async def cleanup():
+        """Ensures models are cleaned up before exit."""
+        await models.cleanup()
+        loop.stop()
+
+    # Handle termination signals
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(cleanup()))
+
+    # Run tasks concurrently
+    await asyncio.gather(
+        process_messages(models),
+        handle_face_classification()
+    )
+    
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt received. Exiting gracefully...")
