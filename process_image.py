@@ -1,3 +1,4 @@
+from multiprocessing import Process, Queue
 from loguru import logger # type: ignore
 from utils.models import Models
 from utils.mongodb import MongodbDatabase
@@ -34,8 +35,46 @@ class ProcessImage():
             return SuccessResponse("Successfully generated embeddings from image", image_features.cpu().numpy().flatten())
         
         except Exception as e:
-            logger.critical(f"Exception at ProcessImage extract_image_embedding_from_opencv")
+            logger.exception(f"Exception at ProcessImage extract_image_embedding_from_opencv")
             return ServerErrorResponse(f"Exception at ProcessImage extract_image_embedding_from_opencv", e)        
+
+    def detect_faces(self, rgb, queue):
+        try:
+            boxes = face_recognition.face_locations(rgb, model="hog")
+            encodings = face_recognition.face_encodings(rgb, boxes)
+            queue.put((boxes, encodings))
+        except Exception as e:
+            logger.exception(f"Exception at ProcessImage detect_faces")
+            queue.put(([], []))
+    
+    def run_with_timeout(self, rgb, timeout=30) -> AppResponse:
+        """Run face detection with a timeout"""
+        queue = Queue()
+        process = Process(target=self.detect_faces, args=(rgb, queue))
+        process.start()
+
+        process.join(timeout)
+
+        if not process.is_alive():
+            process.join()
+            if queue.empty():
+                return ErrorResponse("run_with_timeout failed", {
+                    "boxes": [],
+                    "encodings": []
+                })
+            values = queue.get()
+            return SuccessResponse("Successfully generated boxes and encodings", 
+                {
+                    "boxes": values[0],
+                    "encodings": values[1]
+                })
+
+        process.terminate()
+        process.join()
+        return SuccessResponse("Process timedout", {
+            "boxes": [],
+            "encodings": []
+        })
 
     async def handle_request(self, request: dict)-> AppResponse:
         try:
@@ -69,8 +108,13 @@ class ProcessImage():
 
             self.pinecone.index.upsert([(img_id, image_embedding.data.tolist(), {"experience_id": experience_id, "img_id": img_id, "image_url": image_url})])
 
-            boxes = face_recognition.face_locations(rgb, model="cnn")
-            encodings = face_recognition.face_encodings(rgb, boxes)
+            run_with_timeout_result = self.run_with_timeout(rgb=rgb)
+
+            if not run_with_timeout_result.success:
+                return run_with_timeout_result
+            
+            boxes = run_with_timeout_result.data.get("boxes")
+            encodings = run_with_timeout_result.data.get("encodings")
 
             update = {
                 "experience_id": ObjectId(experience_id),
@@ -90,7 +134,7 @@ class ProcessImage():
 
             update_one_response = await self.mongodb.face_embeddings_collection.update_one({"_id": ObjectId(img_id)}, {"$set": update}, upsert=True)
 
-            if not update_one_response.acknowledged or not update_one_response.modified_count > 0:
+            if not update_one_response.acknowledged:
                 return ErrorResponse("Faield to update image embeddings to mongodb", update_one_response)
                 
             return SuccessResponse("Image processed again sucessfully", None)

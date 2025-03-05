@@ -281,7 +281,7 @@ class AlbumCreation():
                if not get_names_from_query_result.success:
                     return get_names_from_query_result
 
-               cluster_keys = get_names_from_query_result.get("cluster_keys")
+               cluster_keys = get_names_from_query_result.data.get("cluster_keys")
 
                if isinstance(cluster_keys, list) and len(cluster_keys)> 0:
                     fetch_applicable_image_ids_result = await self.fetch_applicable_image_ids(user_id, cluster_keys)
