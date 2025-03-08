@@ -1,6 +1,6 @@
 import datetime
 import json
-from album_creation import AlbumCreation
+from album_memory_creation import AlbumMemoryCreation
 from face_classification import FaceClassification
 from loguru import logger # type: ignore
 import asyncio
@@ -12,8 +12,9 @@ from utils.mongodb import MongodbDatabase
 from utils.pinecone import PineconeDatabase
 from utils.response import AppResponse, ErrorResponse, ServerErrorResponse
 from utils.sqs import SQS
+from utils.step_function import StepFunction
 
-async def process_individual_message(message, sqs: SQS, process_image: ProcessImage, album_creation: AlbumCreation) -> AppResponse:
+async def process_individual_message(message, sqs: SQS, process_image: ProcessImage, album_creation: AlbumMemoryCreation) -> AppResponse:
     try:
         print("message", message)
         receipt_handle = message.get('ReceiptHandle')
@@ -28,7 +29,9 @@ async def process_individual_message(message, sqs: SQS, process_image: ProcessIm
             if action == "EXPERIENCE_IMAGE_UPLOADED":
                 result = await process_image.handle_request(message_dict)
             elif action == "ALBUM_CREATION_REQUEST":
-                result = await album_creation.handle_request(message_dict)
+                result = await album_creation.handle_album_request(message_dict)
+            elif action == "MEMORY_CREATION_AI":
+                result = await album_creation.handle_memory_request(message_dict)
             else:
                 logger.exception(f"Invalid action: {action} at process_individual_message")
                 return ErrorResponse(f"Invalid action: {action} at process_individual_message")
@@ -52,12 +55,13 @@ async def process_individual_message(message, sqs: SQS, process_image: ProcessIm
 async def process_messages():
     try:
         sqs = SQS()
+        step_function = StepFunction()
         models = Models()
         pinecone_database = PineconeDatabase()
         mongodb_database = MongodbDatabase()
         groq_api = GroqApi()
         process_image = ProcessImage(models, pinecone_database, mongodb_database)
-        album_creation = AlbumCreation(models, pinecone_database, mongodb_database, groq_api)
+        album_creation = AlbumMemoryCreation(models, pinecone_database, mongodb_database, groq_api, step_function)
         while True:
             response = await sqs.get_sqs_messages()
             if not response.success:
@@ -92,4 +96,4 @@ if __name__ == "__main__":
     setup_logger()
 
     asyncio.run(process_messages())
-    asyncio.run(handle_face_classification())
+    # asyncio.run(handle_face_classification())

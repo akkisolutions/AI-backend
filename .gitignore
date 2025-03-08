@@ -1,3 +1,6 @@
 __pycache__/**/*
 **/__pycache__/**/*
 .env
+lambda/python/**/*
+lambda/package/**/*
+lambda/lambda_layer.zip

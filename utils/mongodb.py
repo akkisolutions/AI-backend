@@ -15,6 +15,7 @@ CAPTION_SEARCH_COLLECTION = os.getenv("CAPTION_SEARCH_COLLECTION")
 EXPERIENCE_COLLECTION = os.getenv("EXPERIENCE_COLLECTION")
 EXPERIENCE_PARTICIPANT_COLLECTION = os.getenv("EXPERIENCE_PARTICIPANT_COLLECTION")
 ALBUM_COLLECTION =  os.getenv("ALBUM_COLLECTION")
+MEMORY_COLLECTION =  os.getenv("MEMORY_COLLECTION")
 EXPERIENCE_IMAGE_COLLECTION = os.getenv("EXPERIENCE_IMAGE_COLLECTION")
 
 INDEX_NAME = "quickstart"
@@ -40,5 +41,5 @@ class MongodbDatabase():
         self.album_collection = self.database[os.getenv("ALBUM_COLLECTION")]
         self.experience_participant = self.database[os.getenv("EXPERIENCE_PARTICIPANT")]
         self.experience_image = self.database[os.getenv("EXPERIENCE_IMAGE_COLLECTION")]
-
+        self.memory_collection = self.database[os.getenv("MEMORY_COLLECTION")]
         # logger.info("Connected to MongoDB successfully.")
