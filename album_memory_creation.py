@@ -49,7 +49,10 @@ class AlbumMemoryCreation():
 
                selected_names_list = names_response.data.get("user_names")
 
-               cluster_keys = [names_dict[name] for name in selected_names_list if name in names_dict]
+               if isinstance(selected_names_list, list):
+                    cluster_keys = [names_dict[name] for name in selected_names_list if name in names_dict]
+               else:
+                    cluster_keys = []
           
                return SuccessResponse("Successfully fetched names from query", {
                     "selected_names_list": selected_names_list,
