@@ -96,4 +96,4 @@ if __name__ == "__main__":
     setup_logger()
 
     asyncio.run(process_messages())
-    # asyncio.run(handle_face_classification())
+    asyncio.run(handle_face_classification())
