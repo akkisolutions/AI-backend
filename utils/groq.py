@@ -33,7 +33,7 @@ class GroqApi():
     def identify_names_from_prompt(self, known_names, query) -> AppResponse:
         try:
             completion = self.client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="llama-3.1-8b-instant",
                 messages=[
                     {
                         "role": "system",
