@@ -6,7 +6,9 @@ load_dotenv()
 
 pc = Pinecone(api_key=os.getenv("PINECONE_KEY"))
 
-INDEX_NAME = "image-search"
+INDEX_NAME = os.getenv("PINECONE_INDEX")
+
+print("pinecone INDEX_NAME", INDEX_NAME)
 
 class PineconeDatabase():
     def __init__(self):
