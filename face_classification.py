@@ -198,14 +198,14 @@ class FaceClassification():
         
     async def handle_request(self)-> AppResponse:
         try:
-            time_threshold = datetime.utcnow() - timedelta(hours=24)
+            time_threshold = datetime.utcnow() - timedelta(hours=1)
 
             face_cluster_list = await self.mongodb.face_cluster_collection.find(
                 {
-                    # "$or": [
-                    #     {"updated_at": None}, 
-                    #     {"updated_at": {"$lt": time_threshold}} 
-                    # ]
+                    "$or": [
+                        {"updated_at": None}, 
+                        {"updated_at": {"$lt": time_threshold}} 
+                    ]
                 },
                 projection={
                     "user_id": 1,
