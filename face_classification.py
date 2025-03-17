@@ -70,10 +70,9 @@ class FaceClassification():
             replace_one_response = await self.mongodb.face_cluster_collection.replace_one(
                 {"_id": ObjectId(user_id), "user_id": ObjectId(user_id)},
                 {
-                    **cluster_doc, 
+                    **cluster_doc,
                     "user_id": ObjectId(user_id)
-                },
-                upsert=True
+                }
             )
 
             if  replace_one_response.acknowledged and replace_one_response.modified_count > 0:
