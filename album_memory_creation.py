@@ -296,7 +296,7 @@ class AlbumMemoryCreation():
                          }
                     ],
                     "target": {
-                         "bucket": "trhivebucket",
+                         "bucket": "767397828748-us-east-2-hive-client-data-production" if os.getenv("ENV") == "PRODUCTION" else "767397828748-us-east-2-hive-client-data-development",
                          "key": f"image-to-video/{memory_id}.mp4"
                     }
                }
